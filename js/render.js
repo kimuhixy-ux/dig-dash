@@ -9,7 +9,7 @@ const PALETTES = {
     hole: '#05060c', player: '#7df9ff', enemy: '#ff4f7b', enemyEye: '#fff36b',
     exit: '#7dff9a', trapMark: 'rgba(255,255,255,0.55)',
     hat: '#ffb02e', glove: '#ffffff', shoe: '#a0612e', eyeWhite: '#ffffff', pupil: '#14161f',
-    cheek: 'rgba(255,110,150,0.7)', mouth: '#2a0f18'
+    cheek: 'rgba(255,110,150,0.7)', mouth: '#2a0f18', hint: '#4dffa6'
   },
   light: {
     bg: '#eef1f8', brick: '#c0643a', brickHi: '#dd8458', mortar: '#7a3317',
@@ -18,7 +18,7 @@ const PALETTES = {
     hole: '#1b1d29', player: '#0077cc', enemy: '#d81b4a', enemyEye: '#ffe14d',
     exit: '#159a3c', trapMark: 'rgba(0,0,0,0.5)',
     hat: '#f29d00', glove: '#ffffff', shoe: '#7a4520', eyeWhite: '#ffffff', pupil: '#14161f',
-    cheek: 'rgba(255,90,130,0.6)', mouth: '#2a0f18'
+    cheek: 'rgba(255,90,130,0.6)', mouth: '#2a0f18', hint: '#0b9e57'
   }
 };
 
@@ -55,6 +55,7 @@ export function createRenderer(canvas) {
     if (opts.ghost) drawGhost(ctx, opts.ghost, ts, pal);
     drawEntities(ctx, g, ts, pal, opts);
     drawParticles(ctx, state, ts);
+    if (opts.hint) drawHint(ctx, opts.hint, ts, pal, opts.time || 0);
     if (opts.editMode && g.w > 1) drawGrid(ctx, g, ts);
     ctx.restore();
   }
@@ -405,6 +406,28 @@ function line(ctx, a, b) {
   ctx.moveTo(a[0], a[1]);
   ctx.lineTo(b[0], b[1]);
   ctx.stroke();
+}
+
+// チュートリアルで「ここ」を指す、上下に弾む矢印。はしごや金塊と混ざらない色にする。
+function drawHint(ctx, { x, y }, ts, pal, time) {
+  const cx = (x + 0.5) * ts;
+  const tipY = (y - 0.1) * ts - Math.abs(Math.sin(time / 8)) * ts * 0.3;
+  ctx.save();
+  ctx.fillStyle = pal.hint;
+  ctx.strokeStyle = pal.bg;
+  ctx.lineWidth = Math.max(2, ts * 0.1);
+  ctx.beginPath();
+  ctx.moveTo(cx, tipY);
+  ctx.lineTo(cx - ts * 0.4, tipY - ts * 0.45);
+  ctx.lineTo(cx - ts * 0.15, tipY - ts * 0.45);
+  ctx.lineTo(cx - ts * 0.15, tipY - ts * 0.9);
+  ctx.lineTo(cx + ts * 0.15, tipY - ts * 0.9);
+  ctx.lineTo(cx + ts * 0.15, tipY - ts * 0.45);
+  ctx.lineTo(cx + ts * 0.4, tipY - ts * 0.45);
+  ctx.closePath();
+  ctx.stroke();
+  ctx.fill();
+  ctx.restore();
 }
 
 function drawParticles(ctx, state, ts) {

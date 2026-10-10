@@ -4,6 +4,7 @@ import { createInput } from './input.js';
 import { createPlay } from './play.js';
 import { createEditor, decodeMap } from './editor.js';
 import { createGame } from './game.js';
+import { createTutorial } from './tutorial.js';
 import { loadData, saveData, loadGhost, saveGhost } from './storage.js';
 import { unlockAudio, setMuted, playSound } from './audio.js';
 
@@ -47,6 +48,7 @@ function bindUi() {
   $('btn-sound').addEventListener('click', toggleSound);
   $('btn-pause').addEventListener('click', pause);
   $('btn-retry').addEventListener('click', () => restart());
+  $('tut-skip').addEventListener('click', skipTutorial);
   $('opt-ghost').addEventListener('change', (ev) => { data.showGhost = ev.target.checked; saveData(data); });
   input.bindPad($('pad'));
   input.bindDig($('btn-dig-l'), -1);
@@ -93,7 +95,9 @@ function stageButton(lv, i, prog, unlocked) {
   const stars = prog ? prog.stars : 0;
   btn.append(el('span', 'stars', '★'.repeat(stars) + '☆'.repeat(3 - stars)));
   if (prog) btn.append(el('span', 'best', `${prog.best.toFixed(1)}秒`));
-  btn.addEventListener('click', () => startLevel(lv, { id: `b${i}`, index: i }));
+  // 1面はチュートリアルを一度終えるまで、説明つきで始める。
+  const tutorial = i === 0 && !data.tutorialDone;
+  btn.addEventListener('click', () => startLevel(lv, { id: `b${i}`, index: i, tutorial }));
   return btn;
 }
 
@@ -148,11 +152,15 @@ function startLevel(level, meta) {
   $('death-banner').hidden = true;
   fitGame(level);
   const ghost = meta.id && data.showGhost ? loadGhost(meta.id) : null;
+  const tutor = meta.tutorial ? createTutorial({
+    box: $('tut'), textEl: $('tut-text'),
+    controls: { pad: [$('pad')], dig: [$('btn-dig-l'), $('btn-dig-r')], rewind: [$('btn-rewind')] }
+  }) : null;
   const play = createPlay({
     level, renderer: gameRenderer, input, ghostFrames: ghost,
-    onEnd: (res) => onPlayEnd(res), onHud: updateHud
+    onEnd: (res) => onPlayEnd(res), onHud: updateHud, tutor
   });
-  session = { level, meta, play };
+  session = { level, meta, play, tutor };
 }
 
 // 画面を表示した直後でも clientWidth を読めばレイアウトが確定するので、待たずにその場で合わせる。
@@ -162,6 +170,7 @@ function fitGame(level) {
 }
 
 function endSession() {
+  if (session.tutor) session.tutor.stop();
   session.play.stop();
   session = null;
   closeModal();
@@ -170,6 +179,7 @@ function endSession() {
 function restart() {
   if (!session) return;
   const { level, meta } = session;
+  if (session.tutor) session.tutor.stop();
   session.play.stop();
   session = null;
   closeModal();
@@ -202,6 +212,7 @@ function onClear(res) {
     saveData(data);
   }
   if (meta.test) editor.markCleared();
+  if (meta.tutorial) finishTutorial();
   showClearModal(res, newBest, meta);
 }
 
@@ -237,6 +248,19 @@ function pause() {
     { label: '最初から', action: restart },
     { label: session.meta.test ? 'エディタに戻る' : 'ステージ選択へ', action: () => show(back) }
   ]);
+}
+
+// とじる・クリアのどちらでも「済み」にして、次から1面は説明なしで始める。
+function finishTutorial() {
+  if (session && session.tutor) session.tutor.stop();
+  if (session) session.meta.tutorial = false;
+  data.tutorialDone = true;
+  saveData(data);
+}
+
+function skipTutorial() {
+  playSound('tap');
+  finishTutorial();
 }
 
 function startTest(level) {
@@ -281,6 +305,10 @@ function drawTitle() {
 
 function showHowto() {
   const body = $('tpl-howto').content.cloneNode(true);
+  body.querySelector('#btn-tutorial').addEventListener('click', () => {
+    closeModal();
+    startLevel(levels[0], { id: 'b0', index: 0, tutorial: true });
+  });
   openModal('あそびかた', body, [{ label: 'とじる', primary: true, action: closeModal }]);
 }
 

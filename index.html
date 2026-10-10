@@ -63,6 +63,10 @@
         <span>⏪ を長押しで巻き戻し</span>
         <button class="btn small" id="btn-retry">最初から</button>
       </div>
+      <div class="tut" id="tut" hidden>
+        <p id="tut-text"></p>
+        <button class="btn small" id="tut-skip">とじる</button>
+      </div>
     </div>
     <div class="controls">
       <div class="pad" id="pad"><div class="pad-ring"><span class="pad-knob"></span></div></div>
@@ -113,6 +117,7 @@
       <li><b>⏪ を長押し</b>すると時間を巻き戻せます。使わずにクリアすると★3つのチャンス。</li>
       <li>キーボード：矢印キーで移動、Z/X で掘る、R で巻き戻し、P で一時停止。</li>
     </ul>
+    <button class="btn primary howto-tut" id="btn-tutorial">チュートリアルで遊ぶ</button>
   </template>
 
   <script type="module" src="js/main.js"></script>

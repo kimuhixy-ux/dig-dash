@@ -8,7 +8,7 @@ const SNAP_LIMIT = 150;
 const GHOST_EVERY = 2;
 const POSES = ['stand', 'run', 'climb', 'hang', 'fall', 'dig', 'trapped'];
 
-export function createPlay({ level, renderer, input, ghostFrames, onEnd, onHud }) {
+export function createPlay({ level, renderer, input, ghostFrames, onEnd, onHud, tutor }) {
   let g = createGame(level, 1000 + level.map.join('').length);
   const snaps = [];
   const record = [];
@@ -44,6 +44,7 @@ export function createPlay({ level, renderer, input, ghostFrames, onEnd, onHud }
     if (g.status !== 'play') return;
     if (g.tick % SNAP_EVERY === 0) pushSnap();
     if (g.tick % GHOST_EVERY === 0) recordGhost();
+    g.enemyHold = tutor ? tutor.update(g) : false;
     step(g, input.state);
     handleEvents();
     onHud(hudInfo());
@@ -102,7 +103,8 @@ export function createPlay({ level, renderer, input, ghostFrames, onEnd, onHud }
       time: performance.now() / 16.7,
       revealAge: revealTick >= 0 ? g.tick - revealTick : 0,
       ghost: ghostAt(ghostFrames, g.tick),
-      showDead: true
+      showDead: true,
+      hint: tutor ? tutor.hint(g) : null
     });
     if (g.revealed && revealTick < 0) revealTick = g.tick;
   }

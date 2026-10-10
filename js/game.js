@@ -119,7 +119,8 @@ export function step(g, input) {
   g.tick++;
   updateHoles(g);
   updatePlayer(g, input);
-  for (const e of g.enemies) updateEnemy(g, e);
+  // チュートリアルで説明を読んでいる間だけ、敵を止めておけるようにする。
+  if (!g.enemyHold) for (const e of g.enemies) updateEnemy(g, e);
   checkCollision(g);
 }
 
