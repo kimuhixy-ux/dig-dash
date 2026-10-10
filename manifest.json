@@ -1,0 +1,16 @@
+{
+  "name": "Dig Dash",
+  "short_name": "Dig Dash",
+  "description": "掘って、逃げて、金塊を集めるアクションパズル",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#07080f",
+  "theme_color": "#0d1020",
+  "lang": "ja",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}
