@@ -7,14 +7,18 @@ const PALETTES = {
     steel: '#5d6b82', steelHi: '#8a99b3', steelLo: '#363f50', ladder: '#e8c872',
     bar: '#cfd6e6', gold: '#ffcf33', goldHi: '#fff4b8', goldLo: '#b8860b',
     hole: '#05060c', player: '#7df9ff', enemy: '#ff4f7b', enemyEye: '#fff36b',
-    exit: '#7dff9a', trapMark: 'rgba(255,255,255,0.55)'
+    exit: '#7dff9a', trapMark: 'rgba(255,255,255,0.55)',
+    hat: '#ffb02e', glove: '#ffffff', shoe: '#a0612e', eyeWhite: '#ffffff', pupil: '#14161f',
+    cheek: 'rgba(255,110,150,0.7)', mouth: '#2a0f18'
   },
   light: {
     bg: '#eef1f8', brick: '#c0643a', brickHi: '#dd8458', mortar: '#7a3317',
     steel: '#7c879b', steelHi: '#a9b4c8', steelLo: '#4c5566', ladder: '#9a6a12',
     bar: '#4a5468', gold: '#e8a800', goldHi: '#fff1a8', goldLo: '#9a6a00',
     hole: '#1b1d29', player: '#0077cc', enemy: '#d81b4a', enemyEye: '#ffe14d',
-    exit: '#159a3c', trapMark: 'rgba(0,0,0,0.5)'
+    exit: '#159a3c', trapMark: 'rgba(0,0,0,0.5)',
+    hat: '#f29d00', glove: '#ffffff', shoe: '#7a4520', eyeWhite: '#ffffff', pupil: '#14161f',
+    cheek: 'rgba(255,90,130,0.6)', mouth: '#2a0f18'
   }
 };
 
@@ -282,54 +286,118 @@ export function poseOf(g, e) {
   return 'stand';
 }
 
-// 棒人間を太い線で描く。ポーズごとに手足の角度だけを変えれば済むので、画像素材が要らない。
+// 丸い体に短い手足のひょうきんな2頭身キャラ。画像素材を使わず図形だけで描くので、著作権の心配がない。
 function drawRunner(ctx, x, y, ts, color, pose, ent, isEnemy) {
   const s = ts;
-  const ph = (ent.anim || 0) / 5;
-  const swing = Math.sin(ph);
+  const swing = Math.sin((ent.anim || 0) / 5);
   const f = ent.facing || 1;
+  const pal = currentPalette();
   const limbs = limbsFor(pose, swing, f);
+  const bob = pose === 'run' ? Math.abs(swing) * s * 0.04 : 0;
+  const P = (px, py) => [x + px * s, y + py * s - bob];
   ctx.save();
-  ctx.strokeStyle = color;
-  ctx.fillStyle = color;
   ctx.lineCap = 'round';
-  ctx.lineWidth = Math.max(2, s * 0.13);
-  const P = (px, py) => [x + px * s, y + py * s];
-  line(ctx, P(0.5, 0.36), P(0.5, 0.62));
-  for (const [ax, ay] of limbs.arms) line(ctx, P(0.5, 0.42), P(ax, ay));
-  for (const [lx, ly] of limbs.legs) line(ctx, P(0.5, 0.62), P(lx, ly));
-  ctx.beginPath();
-  ctx.arc(x + s * 0.5, y + s * 0.22, s * 0.14, 0, Math.PI * 2);
-  ctx.fill();
-  if (isEnemy) drawVisor(ctx, x, y, s, f);
+  ctx.strokeStyle = color;
+  ctx.lineWidth = Math.max(2, s * 0.09);
+  // 脚は体の後ろ、腕は体の前に描くと、付け根を隠しつつ手の動きがよく見える。
+  limbs.legs.forEach(([lx, ly], i) => {
+    const foot = [x + lx * s, y + (ly - 0.04) * s];
+    line(ctx, P(i ? 0.6 : 0.4, 0.68), foot);
+    dot(ctx, foot, s * 0.075, pal.shoe);
+  });
+  dot(ctx, P(0.5, 0.5), s * 0.27, color);
+  const face = { cx: x + s * 0.5, cy: y + s * 0.5 - bob, s, f, pose, pal };
+  // 顔の描画で線の色や太さを変えるので、腕を描く前に元へ戻す。
+  ctx.save();
+  if (isEnemy) drawEnemyFace(ctx, face, swing, color); else drawPlayerFace(ctx, face);
+  ctx.restore();
+  for (const [ax, ay] of limbs.arms) {
+    line(ctx, P(ax < 0.5 ? 0.27 : 0.73, 0.6), P(ax, ay));
+    dot(ctx, P(ax, ay), s * 0.07, pal.glove);
+  }
   ctx.restore();
 }
 
-function drawVisor(ctx, x, y, s, f) {
-  ctx.fillStyle = currentPalette().enemyEye;
-  ctx.fillRect(x + s * (f > 0 ? 0.5 : 0.36), y + s * 0.18, s * 0.14, s * 0.06);
+function drawPlayerFace(ctx, { cx, cy, s, f, pose, pal }) {
+  ctx.fillStyle = pal.hat;
+  ctx.beginPath();
+  ctx.arc(cx, cy - s * 0.1, s * 0.25, Math.PI, Math.PI * 2);
+  ctx.fill();
+  ctx.fillRect(cx - s * 0.27 + s * 0.06 * f, cy - s * 0.12, s * 0.54, s * 0.06);
+  dot(ctx, [cx + s * 0.1 * f, cy - s * 0.27], s * 0.05, pal.goldHi);
+  drawEyes(ctx, cx + s * 0.05 * f, cy + s * 0.02, s, f, pose, pal.eyeWhite, pal);
+  dot(ctx, [cx + s * 0.19 * f, cy + s * 0.12], s * 0.045, pal.cheek);
+  ctx.fillStyle = pal.mouth;
+  ctx.beginPath();
+  if (pose === 'fall' || pose === 'trapped') ctx.arc(cx + s * 0.06 * f, cy + s * 0.15, s * 0.045, 0, Math.PI * 2);
+  else ctx.arc(cx + s * 0.06 * f, cy + s * 0.08, s * 0.085, 0, Math.PI);
+  ctx.fill();
+}
+
+function drawEnemyFace(ctx, { cx, cy, s, f, pose, pal }, swing, color) {
+  const tip = [cx + s * 0.06 * swing, cy - s * 0.42];
+  line(ctx, [cx, cy - s * 0.25], tip);
+  dot(ctx, tip, s * 0.06, color);
+  const sad = pose === 'trapped';
+  drawEyes(ctx, cx + s * 0.04 * f, cy - s * 0.04, s, f, pose, pal.enemyEye, pal);
+  ctx.strokeStyle = pal.mouth;
+  ctx.lineWidth = Math.max(1.5, s * 0.05);
+  for (const side of [-1, 1]) {
+    const ex = cx + s * 0.04 * f + side * s * 0.1;
+    const inner = sad ? -0.17 : -0.12;
+    line(ctx, [ex - side * s * 0.02, cy + s * inner], [ex + side * s * 0.09, cy + s * (sad ? -0.12 : -0.19)]);
+  }
+  ctx.beginPath();
+  if (sad) {
+    for (let i = 0; i <= 6; i++) ctx.lineTo(cx - s * 0.12 + i * s * 0.04, cy + s * (0.13 + ((i % 2) ? -0.025 : 0.025)));
+    ctx.stroke();
+    return;
+  }
+  // 大口に出っ歯1本。怖さより間の抜けた感じを出すため。
+  ctx.fillStyle = pal.mouth;
+  ctx.ellipse(cx + s * 0.04 * f, cy + s * 0.08, s * 0.12, s * 0.09, 0, 0, Math.PI);
+  ctx.fill();
+  ctx.fillStyle = pal.eyeWhite;
+  ctx.fillRect(cx + s * 0.04 * f - s * 0.035, cy + s * 0.08, s * 0.07, s * 0.05);
+}
+
+// 目は大きな白目と、進む向きに寄せた黒目。はしごでは上を見て、どこへ行くかが一目で分かる。
+function drawEyes(ctx, cx, cy, s, f, pose, white, pal) {
+  const look = pose === 'climb' || pose === 'hang' ? [0, -0.03] : pose === 'fall' ? [0, 0.03] : [0.03 * f, 0];
+  for (const side of [-1, 1]) {
+    const ex = cx + side * s * 0.09;
+    dot(ctx, [ex, cy], s * 0.075, white);
+    dot(ctx, [ex + look[0] * s, cy + look[1] * s], s * 0.038, pal.pupil);
+  }
 }
 
 function limbsFor(pose, sw, f) {
   switch (pose) {
     case 'run':
-      return { arms: [[0.5 + 0.2 * sw, 0.55], [0.5 - 0.2 * sw, 0.55]],
-        legs: [[0.5 + 0.22 * sw, 0.96], [0.5 - 0.22 * sw, 0.96]] };
+      return { arms: [[0.86, 0.56 + 0.12 * sw], [0.14, 0.56 - 0.12 * sw]],
+        legs: [[0.5 - 0.2 * sw, 0.98], [0.5 + 0.2 * sw, 0.98]] };
     case 'climb':
-      return { arms: [[0.3, 0.2 + 0.1 * sw], [0.7, 0.2 - 0.1 * sw]],
-        legs: [[0.32, 0.9 - 0.08 * sw], [0.68, 0.9 + 0.08 * sw]] };
+      return { arms: [[0.18, 0.2 + 0.1 * sw], [0.82, 0.2 - 0.1 * sw]],
+        legs: [[0.34, 0.94 - 0.06 * sw], [0.66, 0.94 + 0.06 * sw]] };
     case 'hang':
-      return { arms: [[0.4 + 0.05 * sw, 0.12], [0.6 + 0.05 * sw, 0.12]],
-        legs: [[0.45, 0.96], [0.55 + 0.05 * sw, 0.94]] };
+      return { arms: [[0.36 + 0.04 * sw, 0.08], [0.64 + 0.04 * sw, 0.08]],
+        legs: [[0.42, 0.98], [0.58 + 0.05 * sw, 0.96]] };
     case 'fall':
-      return { arms: [[0.18, 0.2], [0.82, 0.2]], legs: [[0.3, 0.92], [0.7, 0.92]] };
+      return { arms: [[0.08, 0.16 + 0.06 * sw], [0.92, 0.16 - 0.06 * sw]], legs: [[0.28, 0.96], [0.72, 0.92]] };
     case 'trapped':
-      return { arms: [[0.25, 0.1 + 0.05 * sw], [0.75, 0.1 - 0.05 * sw]], legs: [[0.4, 0.96], [0.6, 0.96]] };
+      return { arms: [[0.14, 0.12 + 0.06 * sw], [0.86, 0.12 - 0.06 * sw]], legs: [[0.4, 0.98], [0.6, 0.98]] };
     case 'dig':
-      return { arms: [[0.5 + 0.4 * f, 0.85], [0.5 + 0.3 * f, 0.75]], legs: [[0.38, 0.96], [0.62, 0.96]] };
+      return { arms: [[0.5 + 0.42 * f, 0.86], [0.5 + 0.34 * f, 0.78]], legs: [[0.38, 0.98], [0.62, 0.98]] };
     default:
-      return { arms: [[0.32, 0.6], [0.68, 0.6]], legs: [[0.4, 0.96], [0.6, 0.96]] };
+      return { arms: [[0.12, 0.68], [0.88, 0.68]], legs: [[0.4, 0.98], [0.6, 0.98]] };
   }
+}
+
+function dot(ctx, [px, py], radius, color) {
+  ctx.fillStyle = color;
+  ctx.beginPath();
+  ctx.arc(px, py, radius, 0, Math.PI * 2);
+  ctx.fill();
 }
 
 function line(ctx, a, b) {
