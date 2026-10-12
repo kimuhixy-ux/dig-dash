@@ -1,5 +1,5 @@
 // キャッシュ名のバージョンは、コードやデータを更新したら必ず上げる。上げ忘れると端末に古い版が残る。
-const CACHE = 'dig-dash-cache-v4';
+const CACHE = 'dig-dash-cache-v5';
 const ASSETS = [
   './', 'index.html', 'manifest.json', 'css/style.css', 'data/levels.json',
   'js/main.js', 'js/game.js', 'js/render.js', 'js/input.js', 'js/audio.js',

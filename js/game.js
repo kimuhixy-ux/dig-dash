@@ -233,15 +233,24 @@ function movePlayerDown(g, p) {
   }
 }
 
+// 掘れるのはレンガだけで、その真上が空いている(はしご・金塊・敵がない)ときに限る。
+function canDig(g, c, r) {
+  if (tileAt(g, c, r) !== '#' || isHole(g, c, r)) return false;
+  const above = tileAt(g, c, r - 1);
+  const aboveOpen = above === ' ' || (above === '#' && isHole(g, c, r - 1));
+  if (!aboveOpen || g.gold[idx(g, c, r - 1)]) return false;
+  return !enemyAt(g, c, r - 1);
+}
+
 function tryDig(g, p, dc) {
   const c = p.c + dc;
   const r = p.r + 1;
   p.facing = dc;
-  if (tileAt(g, c, r) !== '#' || isHole(g, c, r)) return false;
-  const above = tileAt(g, c, p.r);
-  const aboveOpen = above === ' ' || (above === '#' && isHole(g, c, p.r));
-  if (!aboveOpen || g.gold[idx(g, c, p.r)]) return false;
-  if (enemyAt(g, c, p.r)) return false;
+  if (!canDig(g, c, r)) {
+    // 何も起きないと「ボタンが効かない」と感じるので、掘れなかったことを知らせる。
+    g.events.push({ type: 'nodig', c, r });
+    return false;
+  }
   p.mode = 'dig';
   p.t = 0;
   p.dur = DIG_TICKS;

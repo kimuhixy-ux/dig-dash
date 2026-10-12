@@ -48,6 +48,7 @@ function noise(dur, vol = 0.08, when = 0) {
 const SOUNDS = {
   gold: () => [988, 1319, 1760].forEach((f, i) => tone(f, 0.08, { when: i * 0.05 })),
   dig: () => { noise(0.12, 0.07); tone(160, 0.12, { type: 'triangle', slide: 70, vol: 0.08 }); },
+  nodig: () => { tone(140, 0.07, { vol: 0.05 }); tone(140, 0.07, { when: 0.09, vol: 0.05 }); },
   trap: () => tone(330, 0.15, { type: 'triangle', slide: 160, vol: 0.08 }),
   kill: () => { noise(0.25, 0.1); tone(200, 0.3, { type: 'sawtooth', slide: 50, vol: 0.05 }); },
   death: () => tone(660, 0.8, { type: 'sawtooth', slide: 60, vol: 0.07 }),

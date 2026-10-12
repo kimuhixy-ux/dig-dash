@@ -9,7 +9,7 @@ const PALETTES = {
     hole: '#05060c', player: '#7df9ff', enemy: '#ff4f7b', enemyEye: '#fff36b',
     exit: '#7dff9a', trapMark: 'rgba(255,255,255,0.55)',
     hat: '#ffb02e', glove: '#ffffff', shoe: '#a0612e', eyeWhite: '#ffffff', pupil: '#14161f',
-    cheek: 'rgba(255,110,150,0.7)', mouth: '#2a0f18', hint: '#4dffa6'
+    cheek: 'rgba(255,110,150,0.7)', mouth: '#2a0f18', hint: '#4dffa6', nodig: '#ff4d6a'
   },
   light: {
     bg: '#eef1f8', brick: '#c0643a', brickHi: '#dd8458', mortar: '#7a3317',
@@ -18,7 +18,7 @@ const PALETTES = {
     hole: '#1b1d29', player: '#0077cc', enemy: '#d81b4a', enemyEye: '#ffe14d',
     exit: '#159a3c', trapMark: 'rgba(0,0,0,0.5)',
     hat: '#f29d00', glove: '#ffffff', shoe: '#7a4520', eyeWhite: '#ffffff', pupil: '#14161f',
-    cheek: 'rgba(255,90,130,0.6)', mouth: '#2a0f18', hint: '#0b9e57'
+    cheek: 'rgba(255,90,130,0.6)', mouth: '#2a0f18', hint: '#0b9e57', nodig: '#e0153a'
   }
 };
 
@@ -29,7 +29,7 @@ export function currentPalette() {
 
 export function createRenderer(canvas) {
   const ctx = canvas.getContext('2d');
-  const state = { ts: 16, particles: [], shake: 0 };
+  const state = { ts: 16, particles: [], marks: [], shake: 0 };
 
   function fit(cols, rows, maxW, maxH) {
     const ts = Math.max(8, Math.floor(Math.min(maxW / cols, maxH / rows)));
@@ -55,12 +55,18 @@ export function createRenderer(canvas) {
     if (opts.ghost) drawGhost(ctx, opts.ghost, ts, pal);
     drawEntities(ctx, g, ts, pal, opts);
     drawParticles(ctx, state, ts);
+    drawMarks(ctx, state, ts, pal);
     if (opts.hint) drawHint(ctx, opts.hint, ts, pal, opts.time || 0);
     if (opts.editMode && g.w > 1) drawGrid(ctx, g, ts);
     ctx.restore();
   }
 
   function burst(kind, c, r) {
+    // 掘れなかった場所は粒を飛ばさず「×」を残す。粒だと掘れたように見えてしまうため。
+    if (kind === 'nodig') {
+      state.marks.push({ c, r, life: 36 });
+      return;
+    }
     const pal = currentPalette();
     const colors = { gold: pal.gold, dig: pal.brickHi, kill: pal.enemy, death: pal.player, reveal: pal.exit };
     const n = kind === 'death' ? 40 : kind === 'kill' ? 24 : 14;
@@ -428,6 +434,25 @@ function drawHint(ctx, { x, y }, ts, pal, time) {
   ctx.stroke();
   ctx.fill();
   ctx.restore();
+}
+
+function drawMarks(ctx, state, ts, pal) {
+  ctx.strokeStyle = pal.nodig;
+  ctx.lineWidth = Math.max(2.5, ts * 0.14);
+  ctx.lineCap = 'round';
+  for (const m of state.marks) {
+    m.life--;
+    const k = ts * 0.28;
+    const cx = (m.c + 0.5) * ts;
+    const cy = (m.r + 0.5) * ts;
+    ctx.globalAlpha = Math.min(1, m.life / 12);
+    ctx.beginPath();
+    ctx.moveTo(cx - k, cy - k); ctx.lineTo(cx + k, cy + k);
+    ctx.moveTo(cx + k, cy - k); ctx.lineTo(cx - k, cy + k);
+    ctx.stroke();
+  }
+  ctx.globalAlpha = 1;
+  state.marks = state.marks.filter((m) => m.life > 0);
 }
 
 function drawParticles(ctx, state, ts) {
